@@ -219,13 +219,14 @@ class Redis(AgentCheck):
                         self.gauge('redis.key.length', 0, tags=key_tags)
 
         # Save the replication delay for each slave
-        for key in info.keys():
-            if self.slave_key_pattern.match(key):
+        for key in info:
+            if self.slave_key_pattern.match(key) and isinstance(info[key], dict):
                 slave_offset = info[key].get('offset')
                 master_offset = info.get('master_repl_offset')
                 if slave_offset and master_offset and master_offset - slave_offset >= 0:
                     delay = master_offset - slave_offset
-                    slave_tags = tags + [info[key]['ip']] if 'ip' in info[key].keys() else tags
+                    slave_tags = tags + ['slave_ip:%s' % info[key]['ip']] if 'ip' in info[key] else tags
+                    slave_tags.append('slave_id:%s' % key.lstrip('slave'))
                     self.gauge('redis.replication.delay.%s' % key, delay, tags=slave_tags)
 
     def check(self, instance):
